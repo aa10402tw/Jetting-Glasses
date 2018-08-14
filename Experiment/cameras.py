@@ -1,27 +1,6 @@
-import yaml
-import numpy as np
 import cv2
 import numpy as np
 import PyCapture2
-
-
-def loda_camera_params(camera='webcam'):
-
-    if camera == 'webcam':
-        file_name = "CamParams/calibration_webcam.yaml"
-    elif(camera == 'usb'):
-        file_name = "CalibResult/calibration_usb.yaml"
-    elif camera == 'realtime':
-        file_name = "CamParams/calibration_realtime.yaml"
-    else:
-        print('error: no such camera')
-
-    with open(file_name, 'r') as stream:
-        try:
-            data = yaml.load(stream)
-        except yaml.YAMLError as error:
-            print(error)
-    return np.array(data['camera_matrix']), np.array(data['dist_coeff'])
 
 
 def initRealtimeCamera():
@@ -53,9 +32,6 @@ class MyCam:
         if self.camera == 'webcam':
             self.cap = cv2.VideoCapture(0)
             ret, frame = self.cap.read()
-        elif(camera == 'usb'):
-            self.cap = cv2.VideoCapture(1)
-            ret, frame = self.cap.read()
         elif self.camera == 'realtime':
             self.cam = initRealtimeCamera()
             ret, frame = capIm(self.cam)
@@ -63,10 +39,5 @@ class MyCam:
     def get_frame(self):
         if self.camera == 'webcam':
             return self.cap.read()
-        elif self.camera == 'usb':
-            return self.cap.read()
         elif self.camera == 'realtime':
             return capIm(self.cam)
-
-    def release(self):
-        self.cap.release()

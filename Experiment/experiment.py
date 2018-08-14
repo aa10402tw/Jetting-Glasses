@@ -1,7 +1,15 @@
+############################
+### Use Python 3.5 Build ###
+############################
+
 import tkinter as tk
 from PIL import ImageTk, Image, ImageDraw
 import numpy as np
 import time
+import cv2
+import pandas as pd
+
+from cameras import *
 
 finger2num = {'index_1': 0, 'index_2': 1, 'index_3': 2,
               'middle_1': 3, 'middle_2': 4, 'middle_3': 5,
@@ -9,40 +17,50 @@ finger2num = {'index_1': 0, 'index_2': 1, 'index_3': 2,
               'little_1': 9, 'little_2': 10, 'little_3': 11}
 num2finger = {v: k for k, v in finger2num.items()}
 
-
 '''
 Procedure :
 Start -> Exp -> end
 
-Start : Greeting & Enter User Name 
+Start : Greeting & Enter User Name
 
-Exp : 
-    1. Put hand on table 
+Exp :
+    1. Put hand on table
     2. User decide to Start
     3. Show Image, User execute and decide to commit
-    4. Loop to 1. until enough round  
+    4. Loop to 1. until enough round
 
 End : Say GoodBye
 
 '''
 
-NUM_BLOCK = 3
+
+myCam = MyCam('realtime')
+
+NUM_BLOCK = 1
 NUM_TRIAL = 12
 Debug_Mode = True
+FRAME_WIDTH = 800
+FRAME_HEIGHT = 500
 
 
 class ExperimentApp(tk.Tk):
 
     def __init__(self):
         tk.Tk.__init__(self)
-        self.has_haptic = False
+        self.haptic = False
         self.user_name = ''
         self.order = np.array([i for i in range(12)])
         self.idx = 0
         self._frame = None
-        self.geometry("1000x500")
+        self.geometry("%ix%i" % (FRAME_WIDTH, FRAME_HEIGHT))
         self.switch_frame(StartPage)
         self.num_block = 0
+
+        # Output file
+        self.df_idx = []
+        self.df_pos = []
+        self.df_time = []
+        self.df_img_name = []
 
     def block_begin(self, block):
         self.state = 'experiment_block_' + str(block)
@@ -67,9 +85,14 @@ class ExperimentApp(tk.Tk):
 
     def commit_user_name(self, textBox, haptic):
         self.user_name = textBox.get("1.0", "end-1c")
-        print('user_name :', self.user_name)
-        self.switch_frame(ExperimentPage)
-        self.block_begin(1)
+        self.haptic = haptic
+
+        print('user_name :', self.user_name, '( haptic:%r )' % self.haptic)
+        if(self.user_name.strip()):
+            self.switch_frame(ExperimentPage)
+            self.block_begin(1)
+        else:
+            print('user_name can not be empty')
 
     def switch_frame(self, frame_class):
         """Destroys current frame and replaces it with a new one."""
@@ -79,10 +102,16 @@ class ExperimentApp(tk.Tk):
         self._frame = new_frame.frame
         self._frame.place(relx=.5, rely=.5, anchor='c')
 
+    def save_data(self):
+        df = pd.DataFrame({'pos': self.df_pos, 'time': self.df_time, 'img_name': self.df_img_name})
+        haptic = 'haptic' if self.haptic else 'no_haptic'
+        csv_name = "data/csv/%s(%s).csv" % (self.user_name, haptic)
+        df.to_csv(csv_name, sep='\t', index=False)
+
 
 class StartPage(tk.Frame):
     def __init__(self, master):
-        self.frame = tk.Frame(width=1000, height=500, colormap="new")
+        self.frame = tk.Frame(width=FRAME_WIDTH, height=FRAME_HEIGHT, colormap="new")
         self.frame_info = tk.Label(self.frame, text='請輸入姓名(英文)', font=("Monospace", 20))
         self.textBox_user_name = tk.Text(self.frame, height=1, width=20, font=("Monospace", 20))
 
@@ -100,7 +129,7 @@ class ExperimentPage(tk.Frame):
 
     def __init__(self, master):
         self.master = master
-        self.frame = tk.Frame(width=1000, height=500, colormap="new")
+        self.frame = tk.Frame(width=FRAME_WIDTH, height=FRAME_HEIGHT, colormap="new")
         self.exper_intro_title = tk.Label(self.frame, text="實驗介紹", font=("Monospace", 20))
         self.exper_intro = tk.Label(self.frame, text="本實驗....", font=("Monospace", 20))
         self.ready_instruction = tk.Label(self.frame, text="請將雙手平放於桌上", font=("Monospace", 20))
@@ -121,13 +150,24 @@ class ExperimentPage(tk.Frame):
                            (149, 90), (154, 172), (166, 280),
                            (38, 210), (63, 263), (87, 327)]
 
+        self.frame.bind_all("<Key>", self.press_enter)
+        self.state = ''
+
         self.debug_info = ''
         self.debug_label = tk.Label(self.frame, font=("Monospace", 20), borderwidth=2, relief="solid")
 
         if(master.num_block == 0):
-            self.exp_intro()
+            # self.exp_intro()
+            self.take_break()
         else:
             self.take_break()
+
+    def press_enter(self, event):
+        if event.char == ' ':
+            if self.state == 'start':
+                self.commit()
+            elif self.state == 'break':
+                self.start()
 
     def get_debug_info(self):
         self.debug_info = "block : %i/%i\ntrial : %i/%i\ntime : %.2f s" % (self.master.num_block, NUM_BLOCK, self.master.idx, 12, self.completion_time)
@@ -143,7 +183,7 @@ class ExperimentPage(tk.Frame):
             self.debug_label.place(relx=.05, rely=.05, anchor='nw')
 
     def take_break(self):
-
+        self.state = 'break'
         self.exper_intro_title.place_forget()
         self.exper_intro.place_forget()
 
@@ -160,16 +200,33 @@ class ExperimentPage(tk.Frame):
         self.commit_time = time.time()
         self.completion_time = self.commit_time - self.start_time
         f = self.master.get_finger_num()
+        # Output File
+        folder = 'data/haptic/' if self.master.haptic else 'data/no_haptic/'
+        img_name = folder + ("%s_%s_%s.jpg" % (self.master.user_name, num2finger[f], self.master.num_block))
+        # Save image
+        ret, frame = myCam.get_frame()
+        cv2.imwrite(img_name, frame)
+        # Save dataframe
+        # self.df_idx.append()
+        self.master.df_pos.append(num2finger[f])
+        self.master.df_time.append(self.completion_time)
+        self.master.df_img_name.append(img_name)
+
         print("finish [%i] %i, %s (%.2f s)" % (self.master.idx, f, num2finger[f], self.completion_time))
         c = self.master.next_finger()
+
+        if Debug_Mode:
+            cv2.imshow('frame', cv2.resize(frame, (640, 480)))
         if(c != -1):
             self.take_break()
 
     def start(self):
+        self.state = 'start'
+        self.start_time = time.time()
         self.exper_intro_title.place_forget()
         self.exper_intro.place_forget()
         self.ready_instruction.place_forget()
-        self.start_time = time.time()
+        self.ready_button.place_forget()
         img = Image.open("right_hand.JPG")
         draw = ImageDraw.Draw(img)
         point_size = 10
@@ -182,8 +239,8 @@ class ExperimentPage(tk.Frame):
         self.hand_img = ImageTk.PhotoImage(img)
         self.img_label = tk.Label(self.frame, image=self.hand_img)
         self.img_label.place(relx=.5, rely=.5, anchor='c')
-        self.exper_instruction.place(relx=.8, rely=.5, anchor='c')
-        self.commit_button.place(relx=.8, rely=.8, anchor='c')
+        # self.exper_instruction.place(relx=.8, rely=.5, anchor='c')
+        # self.commit_button.place(relx=.5, rely=.85, anchor='c')
 
         if(Debug_Mode):
             self.debug_label['text'] = '(start)\n' + self.get_debug_info()
@@ -192,13 +249,15 @@ class ExperimentPage(tk.Frame):
 
 class ExitPage(tk.Frame):
     def __init__(self, master):
-        self.frame = tk.Frame(width=1000, height=500, bg="green", colormap="new")
+        self.frame = tk.Frame(width=FRAME_WIDTH, height=FRAME_HEIGHT, colormap="new")
         self.master = master
-
-        self.exit_label = tk.Label(self.frame, text="88888")
-        self.exit_label.place(relx=.5, rely=.5, anchor='c')
+        self.exit_label = tk.Label(self.frame, text="Bye", font=("Monospace", 20), relief="solid")
+        self.buttonSave = tk.Button(self.frame, height=1, width=10, text="Save Data", font=("Monospace", 20),
+                                    command=lambda: master.save_data())
+        self.buttonSave.place(relx=.5, rely=.5, anchor='c')
 
 
 if __name__ == "__main__":
     app = ExperimentApp()
+    app.title("Study 3")
     app.mainloop()

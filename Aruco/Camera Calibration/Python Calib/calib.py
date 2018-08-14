@@ -9,19 +9,19 @@ import numpy as np
 import copy
 import PyCapture2
 
-aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
 
-markerLength = 0.04
-markerSeparation = 0.01
+markerLength = 0.015
+markerSeparation = 0.004
 
-board = aruco.GridBoard_create(5, 10, markerLength, markerSeparation, aruco_dict)
+aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_5X5_50)
+board = aruco.GridBoard_create(1, 10, markerLength, markerSeparation, aruco_dict)
 arucoParams = aruco.DetectorParameters_create()
 
 camera = 'realtime'
 
 # board_image = np.zeros((256, 256, 1), dtype="uint8")
 # board_image = board.draw((1000, 2000))
-# cv2.imwrite('board.jpg', board_image)
+# cv2.imwrite('board_tracker.jpg', board_image)
 # cv2.waitKey(0)
 
 
@@ -70,7 +70,7 @@ def Calibrate_camera(img_list):
     #mat = np.zeros((3,3), float)
     ret, mtx, dist, rvecs, tvecs = aruco.calibrateCameraAruco(corners_list, id_list, counter, board, img_gray.shape, None, None)
 
-    print("Camera matrix:\n", mtx, "distCoeffs:\n", dist)
+    print("Camera matrix:\n", mtx, "\ndistCoeffs:\n", dist)
     return mtx, dist
 
 
@@ -112,13 +112,13 @@ while(True):
         show_axis = True
 
 
-cap.release()
 cv2.destroyAllWindows()
 
 if(camera == 'webcam'):
-    file_name = "Calib Result/alibration_webcam.yaml"
+    file_name = "CalibResult/calibration_webcam.yaml"
+    cap.release()
 elif(camera == 'realtime'):
-    file_name = "Calib Result/calibration_realtime.yaml"
+    file_name = "CalibResult/calibration_realtime.yaml"
 
 data = {'camera_matrix': np.asarray(cameraMatrix).tolist(), 'dist_coeff': np.asarray(distCoeffs).tolist()}
 with open(file_name, "w") as f:
