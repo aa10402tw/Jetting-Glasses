@@ -2,12 +2,17 @@
 ### Use Python 3.5 Build ###
 ############################
 
+import warnings
+warnings.filterwarnings("ignore")
+
 import tkinter as tk
 from PIL import ImageTk, Image, ImageDraw
 import numpy as np
 import time
 import cv2
 import pandas as pd
+import os
+import multiprocessing
 
 from cameras import *
 
@@ -34,11 +39,11 @@ End : Say GoodBye
 '''
 
 
-myCam = MyCam('realtime')
+myCam = MyCam('webcam')
 
-NUM_BLOCK = 1
+NUM_BLOCK = 3
 NUM_TRIAL = 12
-Debug_Mode = True
+Debug_Mode = False
 FRAME_WIDTH = 800
 FRAME_HEIGHT = 500
 
@@ -155,10 +160,15 @@ class ExperimentPage(tk.Frame):
 
         self.debug_info = ''
         self.debug_label = tk.Label(self.frame, font=("Monospace", 20), borderwidth=2, relief="solid")
+        self.data_path = ('data/haptic/' if self.master.haptic else 'data/no_haptic/') + self.master.user_name
+        self.thread = None
+        self.stopEvent = None
 
         if(master.num_block == 0):
             # self.exp_intro()
             self.take_break()
+            if not os.path.exists(self.data_path):
+                os.makedirs(self.data_path)
         else:
             self.take_break()
 
@@ -168,6 +178,8 @@ class ExperimentPage(tk.Frame):
                 self.commit()
             elif self.state == 'break':
                 self.start()
+
+    # -------begin capturing and saving video
 
     def get_debug_info(self):
         self.debug_info = "block : %i/%i\ntrial : %i/%i\ntime : %.2f s" % (self.master.num_block, NUM_BLOCK, self.master.idx, 12, self.completion_time)
@@ -201,7 +213,7 @@ class ExperimentPage(tk.Frame):
         self.completion_time = self.commit_time - self.start_time
         f = self.master.get_finger_num()
         # Output File
-        folder = 'data/haptic/' if self.master.haptic else 'data/no_haptic/'
+        folder = self.data_path + '/'
         img_name = folder + ("%s_%s_%s.jpg" % (self.master.user_name, num2finger[f], self.master.num_block))
         # Save image
         ret, frame = myCam.get_frame()
@@ -246,6 +258,21 @@ class ExperimentPage(tk.Frame):
             self.debug_label['text'] = '(start)\n' + self.get_debug_info()
             self.debug_label.place(relx=.05, rely=.05, anchor='nw')
 
+        # Write video
+        folder = self.data_path + '/'
+        file_name = folder + ("%s_%s_%s.avi" % (self.master.user_name, num2finger[f], self.master.num_block))
+        fourcc = cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')
+        out = cv2.VideoWriter(file_name, fourcc, 20.0, myCam.get_resolution())
+        self.recording(out)
+
+    def recording(self, out):
+        if self.state == 'start':
+            ret, frame = myCam.get_frame()
+            out.write(frame)
+            self.frame.after(1, lambda: self.recording(out))
+        else:
+            out.release()
+
 
 class ExitPage(tk.Frame):
     def __init__(self, master):
@@ -255,6 +282,8 @@ class ExitPage(tk.Frame):
         self.buttonSave = tk.Button(self.frame, height=1, width=10, text="Save Data", font=("Monospace", 20),
                                     command=lambda: master.save_data())
         self.buttonSave.place(relx=.5, rely=.5, anchor='c')
+
+        myCam.release()
 
 
 if __name__ == "__main__":

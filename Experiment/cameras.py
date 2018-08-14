@@ -41,3 +41,13 @@ class MyCam:
             return self.cap.read()
         elif self.camera == 'realtime':
             return capIm(self.cam)
+
+    def get_resolution(self):
+        if self.camera == 'webcam':
+            return (640, 480)
+        elif self.camera == 'realtime':
+            return (1920, 1200)
+
+    def release(self):
+        if self.camera == 'webcam':
+            self.camera.release()
