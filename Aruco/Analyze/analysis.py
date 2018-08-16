@@ -6,12 +6,10 @@ import glob
 import os
 
 camera = 'webcam'
-name = 'test'
 
-pos2marker = {'index_1': 5, 'index_2': 13, 'index_3': 1,
-              'middle_1': 0, 'middle_2': 3, 'middle_3': 12,
-              'ring_1': 6, 'ring_2': 7, 'ring_3': 8,
-              'little_1': 0, 'little_2': 0, 'little_3': 0}
+pos2marker = {'index_1': 1, 'index_2': 3, 'index_3': 5,
+              'middle_1': 12, 'middle_2': 13, 'middle_3': 14,
+              'ring_1': 16, 'ring_2': 17, 'ring_3': 19}
 
 marker2pos = {v: k for k, v in pos2marker.items()}
 
@@ -29,27 +27,51 @@ def read_panticpant_data(name='', haptic=False):
         return df
 
 
-df = read_panticpant_data(name=name, haptic=True)
+def analyze_data(df):
+    pos_list = []
+    dis_list = []
+    time_list = []
+    for img_src, pos, pos_thick, time in zip(df['img_name'], df['pos'], df['pos_thick'], df['time']):
+        frame = cv2.imread(img_src)
+        JG.update_frame(frame)
+        rayPoint, planeCenter, intersectPoint, dis = JG.ray_intersect(pos2marker[pos], pos_thick)
+        pos_list.append(pos)
+        dis_list.append(dis)
+        time_list.append(time)
+    return pos_list, dis_list, time_list
 
-for img_src, pos, pos_thick, time in zip(df['img_name'], df['pos'], df['pos_thick'], df['time']):
-    frame = cv2.imread(img_src)
-    JG.update_frame(frame)
-    rayPoint, planeCenter, intersectPoint, dis = JG.ray_intersect(pos2marker[pos], pos_thick)
-    frame = JG.get_frame(frame, corner=False, axis=False, tracker_corner=True, port=True, ray=True)
-    frame_info = JG.get_frame_info()
-    frame = cv2.resize(frame, get_resolution(camera))
-    cv2.putText(frame, 'Pos : %s' % (pos), (30, 50), cv2.FONT_HERSHEY_COMPLEX, 1, (255, 0, 0), 2)
-    cv2.putText(frame, 'Dis : %.4f' % (dis), (30, 100), cv2.FONT_HERSHEY_COMPLEX, 1, (255, 0, 0), 2)
-    cv2.putText(frame, 'Time : %.4f' % (time), (30, 150), cv2.FONT_HERSHEY_COMPLEX, 1, (255, 0, 0), 2)
-    if frame_info['error'] is not None:
-        cv2.putText(frame, frame_info['error'], (30, 200), cv2.FONT_HERSHEY_COMPLEX, 1, (0, 0, 255), 2)
-    cv2.imshow('frame', frame)
 
-    c = cv2.waitKey(0)
-    if c & 0xFF == ord('s'):
-        draw.camera()
-        draw.corner(frame_info)
-        draw.port_ray(frame_info)
-        draw.intersect(planeCenter, intersectPoint)
-        draw.show()
-        draw.__init__()
+df_names = pd.read_csv('./data/csv/all_panticpant.csv', sep='\t')
+names = list(df_names['name'].values)
+avg_dis_h, avg_dis_nh, avg_time_h, avg_time_nh = [], [], [], []
+for name in names:
+    df_h = read_panticpant_data(name=name, haptic=True)
+    df_nh = read_panticpant_data(name=name, haptic=False)
+    pos_list_h, dis_list_h, time_list_h = analyze_data(df_h)
+    pos_list_nh, dis_list_nh, time_list_nh = analyze_data(df_nh)
+    pos = ['index_1', 'index_2', 'index_3', 'middle_1', 'middle_2', 'middle_3', 'ring_1', 'ring_2', 'ring_3']
+    dis_h = [dis_list_h[pos_list_h.index(pos[i])] for i in range(len(pos))]
+    time_h = [time_list_h[pos_list_h.index(pos[i])] for i in range(len(pos))]
+    dis_nh = [dis_list_nh[pos_list_nh.index(pos[i])] for i in range(len(pos))]
+    time_nh = [time_list_nh[pos_list_nh.index(pos[i])] for i in range(len(pos))]
+
+    avg_dis_h.append(np.nanmean(dis_h) if not np.isnan(np.nanmean(dis_h)) else 'Nan')
+    avg_dis_nh.append(np.nanmean(dis_nh) if not np.isnan(np.nanmean(dis_nh)) else 'Nan')
+    avg_time_h.append(np.nanmean(time_h))
+    avg_time_nh.append(np.nanmean(time_nh))
+
+    dis_h = ['NaN' if np.isnan(x) else x for x in dis_h]
+    dis_nh = ['NaN' if np.isnan(x) else x for x in dis_nh]
+
+    df = pd.DataFrame({'Pos': pos, 'Dis_hap': dis_h, 'Time_hap': time_h, 'Dis_nHap': dis_nh, 'Time_nHap': time_nh})
+    df = df[['Pos', 'Dis_hap', 'Time_hap', 'Dis_nHap', 'Time_nHap']]
+    writer = pd.ExcelWriter('./AnalyzeResult/%s.xlsx' % (name))
+    df.to_excel(writer, index=False)
+    writer.save()
+
+
+df = pd.DataFrame({'Name': names, 'Avg_Dis_hap': avg_dis_h, 'Avg_Time_hap': avg_time_h, 'Avg_Dis_nHap': avg_dis_nh, 'Avg_Time_nHap': avg_time_nh})
+df = df[['Name', 'Avg_Dis_hap', 'Avg_Time_hap', 'Avg_Dis_nHap', 'Avg_Time_nHap']]
+writer = pd.ExcelWriter('./AnalyzeResult/summary.xlsx')
+df.to_excel(writer, index=False)
+writer.save()

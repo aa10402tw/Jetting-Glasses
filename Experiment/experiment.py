@@ -50,6 +50,10 @@ Debug_Mode = True
 FRAME_WIDTH = 800
 FRAME_HEIGHT = 500
 
+if not os.path.isfile('./data/csv/all_panticpant.csv'):
+    df = pd.DataFrame({'name': []})
+    df.to_csv('./data/csv/all_panticpant.csv', sep='\t', index=False)
+
 
 class ExperimentApp(tk.Tk):
 
@@ -57,7 +61,7 @@ class ExperimentApp(tk.Tk):
         tk.Tk.__init__(self)
         self.haptic = False
         self.user_name = ''
-        self.order = np.array([i for i in range(6)])
+        self.order = np.array([i for i in range(NUM_TRIAL)])
         self.idx = 0
         self._frame = None
         self.geometry("%ix%i" % (FRAME_WIDTH, FRAME_HEIGHT))
@@ -99,7 +103,7 @@ class ExperimentApp(tk.Tk):
         print('user_name :', self.user_name, '( haptic:%r )' % self.haptic)
         if(self.user_name.strip()):
 
-            if os.path.isfile('%s.pickle' % (self.user_name)):
+            if os.path.isfile('data/Thickness/%s.pickle' % (self.user_name)):
                 self.switch_frame(ExperimentPage)
                 self.block_begin(1)
             else:
@@ -121,9 +125,17 @@ class ExperimentApp(tk.Tk):
         csv_name = "data/csv/%s(%s).csv" % (self.user_name, haptic)
         df.to_csv(csv_name, sep='\t', index=False)
 
+        df_names = pd.read_csv('./data/csv/all_panticpant.csv', sep='\t')
+        names = list(df_names['name'].values)
+        if self.user_name not in names:
+            names.append(self.user_name)
+            df_names = pd.DataFrame({'name': names})
+            df_names.to_csv('./data/csv/all_panticpant.csv', sep='\t', index=False)
+        self.quit()
+
 
 class StartPage(tk.Frame):
-    def __init__(self, master):
+    def __init__(self, master, name='', ):
         self.frame = tk.Frame(width=FRAME_WIDTH, height=FRAME_HEIGHT, colormap="new")
         self.frame_info = tk.Label(self.frame, text='請輸入姓名(英文)', font=("Monospace", 20))
         self.textBox_user_name = tk.Text(self.frame, height=1, width=20, font=("Monospace", 20))
@@ -148,7 +160,7 @@ class ThicknessPage(tk.Frame):
                'middle_1', 'middle_2', 'middle_3',
                'ring_1', 'ring_2', 'ring_3']
         dictionary = dict(zip(pos, thickness))
-        with open('%s.pickle' % (self.master.user_name), 'wb') as f:
+        with open('data/Thickness/%s.pickle' % (self.master.user_name), 'wb') as f:
             pickle.dump(dictionary, f)
         self.master.switch_frame(ExperimentPage)
         self.master.block_begin(1)
@@ -210,7 +222,7 @@ class ExperimentPage(tk.Frame):
         self.thread = None
         self.stopEvent = None
 
-        with open('%s.pickle' % (self.master.user_name), 'rb') as f:
+        with open('data/Thickness/%s.pickle' % (self.master.user_name), 'rb') as f:
             self.pos2thick = pickle.load(f)
 
         if(master.num_block == 0):
@@ -231,7 +243,7 @@ class ExperimentPage(tk.Frame):
     # -------begin capturing and saving video
 
     def get_debug_info(self):
-        self.debug_info = "block : %i/%i\ntrial : %i/%i\ntime : %.2f s" % (self.master.num_block, NUM_BLOCK, self.master.idx, 12, self.completion_time)
+        self.debug_info = "block : %i/%i\ntrial : %i/%i\ntime : %.2f s" % (self.master.num_block, NUM_BLOCK, self.master.idx, NUM_TRIAL, self.completion_time)
         return self.debug_info
 
     def exp_intro(self):

@@ -4,7 +4,7 @@
 ##############
 
 整個實驗程式，分析程式必須以 Python 3.5 Build 來執行
-( 可在Sublime Text 3 的 Tool -> Build System -> Python3.5 
+( 可在Sublime Text 3 選擇 Tool -> Build System -> Python3.5 
   Sublime Text 按下 Ctrl+B 即為執行程式 )
   
 
@@ -34,4 +34,6 @@
 
 2. 執行 Jetting-Glasses/Aruco/Analyze/analysis.py
 
-3. 打開 Jetting-Glasses/Aruco/Analyze/AnalyzeResult/result.excel 察看結果
+3. 打開 Jetting-Glasses/Aruco/Analyze/AnalyzeResult/summary.excel 察看結果
+
+P.S. 若想看某個受試Detail，可打開 Jetting-Glasses/Aruco/Analyze/analysis_single.py 並修改 "participant_name" 且執行
