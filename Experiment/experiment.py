@@ -13,6 +13,7 @@ import cv2
 import pandas as pd
 import os
 import multiprocessing
+import pickle
 
 from cameras import *
 
@@ -21,6 +22,8 @@ finger2num = {'index_1': 0, 'index_2': 1, 'index_3': 2,
               'ring_1': 6, 'ring_2': 7, 'ring_3': 8,
               'little_1': 9, 'little_2': 10, 'little_3': 11}
 num2finger = {v: k for k, v in finger2num.items()}
+
+pos2thick = {}
 
 '''
 Procedure :
@@ -41,9 +44,9 @@ End : Say GoodBye
 
 myCam = MyCam('webcam')
 
-NUM_BLOCK = 3
-NUM_TRIAL = 12
-Debug_Mode = False
+NUM_BLOCK = 1
+NUM_TRIAL = 9
+Debug_Mode = True
 FRAME_WIDTH = 800
 FRAME_HEIGHT = 500
 
@@ -54,7 +57,7 @@ class ExperimentApp(tk.Tk):
         tk.Tk.__init__(self)
         self.haptic = False
         self.user_name = ''
-        self.order = np.array([i for i in range(12)])
+        self.order = np.array([i for i in range(6)])
         self.idx = 0
         self._frame = None
         self.geometry("%ix%i" % (FRAME_WIDTH, FRAME_HEIGHT))
@@ -65,6 +68,7 @@ class ExperimentApp(tk.Tk):
         self.df_idx = []
         self.df_pos = []
         self.df_time = []
+        self.df_thick = []
         self.df_img_name = []
 
     def block_begin(self, block):
@@ -94,8 +98,12 @@ class ExperimentApp(tk.Tk):
 
         print('user_name :', self.user_name, '( haptic:%r )' % self.haptic)
         if(self.user_name.strip()):
-            self.switch_frame(ExperimentPage)
-            self.block_begin(1)
+
+            if os.path.isfile('%s.pickle' % (self.user_name)):
+                self.switch_frame(ExperimentPage)
+                self.block_begin(1)
+            else:
+                self.switch_frame(ThicknessPage)
         else:
             print('user_name can not be empty')
 
@@ -108,7 +116,7 @@ class ExperimentApp(tk.Tk):
         self._frame.place(relx=.5, rely=.5, anchor='c')
 
     def save_data(self):
-        df = pd.DataFrame({'pos': self.df_pos, 'time': self.df_time, 'img_name': self.df_img_name})
+        df = pd.DataFrame({'pos': self.df_pos, 'pos_thick': self.df_thick, 'time': self.df_time, 'img_name': self.df_img_name})
         haptic = 'haptic' if self.haptic else 'no_haptic'
         csv_name = "data/csv/%s(%s).csv" % (self.user_name, haptic)
         df.to_csv(csv_name, sep='\t', index=False)
@@ -128,6 +136,44 @@ class StartPage(tk.Frame):
         self.textBox_user_name.place(relx=.5, rely=.5, anchor='c')
         self.buttonCommit_no_haptic.place(relx=.4, rely=.6, anchor='c')
         self.buttonCommit_haptic.place(relx=.6, rely=.6, anchor='c')
+
+
+class ThicknessPage(tk.Frame):
+
+    def commitThickness(self):
+        thickness = []
+        for i in range(9):
+            thickness.append(float(self.thickness_textBoxs[i].get("1.0", "end-1c")))
+        pos = ['index_1', 'index_2', 'index_3',
+               'middle_1', 'middle_2', 'middle_3',
+               'ring_1', 'ring_2', 'ring_3']
+        dictionary = dict(zip(pos, thickness))
+        with open('%s.pickle' % (self.master.user_name), 'wb') as f:
+            pickle.dump(dictionary, f)
+        self.master.switch_frame(ExperimentPage)
+        self.master.block_begin(1)
+
+    def __init__(self, master):
+        self.master = master
+        self.frame = tk.Frame(width=FRAME_WIDTH, height=FRAME_HEIGHT, colormap="new")
+        self.frame_info = tk.Label(self.frame, text='請輸入手指厚度', font=("Monospace", 20))
+
+        self.thickness_textBoxs = []
+        x, y = 0.7, 0.3
+        for i in range(9):
+            self.thickness_textBoxs.append(tk.Text(self.frame, height=1, width=5, font=("Monospace", 20)))
+            self.thickness_textBoxs[i].insert(tk.END, '0.0')
+            self.thickness_textBoxs[i].place(relx=x, rely=y, anchor='c')
+            y += 0.2
+            if i % 3 == 2:
+                x -= 0.2
+                y = 0.3
+
+        self.buttonCommit = tk.Button(self.frame, height=1, width=10, text="commit", font=("Monospace", 20),
+                                      command=lambda: self.commitThickness())
+        self.frame_info.place(relx=.5, rely=.2, anchor='c')
+
+        self.buttonCommit.place(relx=.5, rely=.8, anchor='c')
 
 
 class ExperimentPage(tk.Frame):
@@ -151,7 +197,7 @@ class ExperimentPage(tk.Frame):
         self.completion_time = 0
 
         self.finger_pos = [(376, 95), (364, 171), (346, 270),
-                           (241, 62), (245, 148), (247, 157),
+                           (241, 62), (245, 148), (247, 260),
                            (149, 90), (154, 172), (166, 280),
                            (38, 210), (63, 263), (87, 327)]
 
@@ -163,6 +209,9 @@ class ExperimentPage(tk.Frame):
         self.data_path = ('data/haptic/' if self.master.haptic else 'data/no_haptic/') + self.master.user_name
         self.thread = None
         self.stopEvent = None
+
+        with open('%s.pickle' % (self.master.user_name), 'rb') as f:
+            self.pos2thick = pickle.load(f)
 
         if(master.num_block == 0):
             # self.exp_intro()
@@ -214,13 +263,15 @@ class ExperimentPage(tk.Frame):
         f = self.master.get_finger_num()
         # Output File
         folder = self.data_path + '/'
-        img_name = folder + ("%s_%s_%s.jpg" % (self.master.user_name, num2finger[f], self.master.num_block))
+        img_name = folder + ("%s_%s.jpg" % (num2finger[f], self.master.num_block))
         # Save image
         ret, frame = myCam.get_frame()
         cv2.imwrite(img_name, frame)
         # Save dataframe
         # self.df_idx.append()
+
         self.master.df_pos.append(num2finger[f])
+        self.master.df_thick.append(self.pos2thick[num2finger[f]])
         self.master.df_time.append(self.completion_time)
         self.master.df_img_name.append(img_name)
 
@@ -228,7 +279,8 @@ class ExperimentPage(tk.Frame):
         c = self.master.next_finger()
 
         if Debug_Mode:
-            cv2.imshow('frame', cv2.resize(frame, (640, 480)))
+            print()
+            # cv2.imshow('frame', cv2.resize(frame, (640, 480)))
         if(c != -1):
             self.take_break()
 
@@ -260,16 +312,19 @@ class ExperimentPage(tk.Frame):
 
         # Write video
         folder = self.data_path + '/'
-        file_name = folder + ("%s_%s_%s.avi" % (self.master.user_name, num2finger[f], self.master.num_block))
+        file_name = folder + ("%s_%s.avi" % (num2finger[f], self.master.num_block))
         fourcc = cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')
         out = cv2.VideoWriter(file_name, fourcc, 20.0, myCam.get_resolution())
         self.recording(out)
 
     def recording(self, out):
         if self.state == 'start':
+            if Debug_Mode and time.time() - self.start_time > 5.0:
+                self.commit()
             ret, frame = myCam.get_frame()
             out.write(frame)
             self.frame.after(1, lambda: self.recording(out))
+
         else:
             out.release()
 
@@ -282,8 +337,6 @@ class ExitPage(tk.Frame):
         self.buttonSave = tk.Button(self.frame, height=1, width=10, text="Save Data", font=("Monospace", 20),
                                     command=lambda: master.save_data())
         self.buttonSave.place(relx=.5, rely=.5, anchor='c')
-
-        myCam.release()
 
 
 if __name__ == "__main__":

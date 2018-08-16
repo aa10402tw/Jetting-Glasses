@@ -11,8 +11,6 @@ from cameraParams import *
 camera = 'webcam'
 
 cameraMatrix, distCoeffs = loda_camera_params(camera=camera)
-# cameraMatrix = np.reshape(cameraMatrix, (3, 3))
-# distCoeffs = np.reshape(distCoeffs, (1, 5))
 # mode = 'image'
 mode = 'video'
 
@@ -34,7 +32,6 @@ if mode == 'image':
 
     # Show Frame
     frame = JG.get_frame(frame, corner=True, axis=True, port=False, ray=False)
-    cv2.imshow('frame', frame)
     cv2.imshow('frame', cv2.resize(frame, (1080, 720)))
     cv2.waitKey(0)
 
@@ -57,7 +54,7 @@ if mode == 'video':
         # capture frame-by-frame
         ret, frame = myCam.get_frame()
         JG.update_frame(frame)
-        frame = JG.get_frame(frame, corner=True, axis=True, tracker_corner=True, port=True, ray=True)
+        frame = JG.get_frame(frame, corner=True, axis=False, tracker_corner=True, port=True, ray=True)
         frame = JG.get_frame_with_board(frame)
         cv2.imshow('frame', frame)  # check ray
         c = cv2.waitKey(1)
@@ -66,7 +63,7 @@ if mode == 'video':
         if c & 0xFF == ord('w'):  # 按 w to view 3D
             cv2.waitKey(3000)
             frame_info = JG.get_frame_info()
-            rayPoint, planeCenter, intersectPoint, dis = JG.ray_intersect(marker_id=40)
+            rayPoint, planeCenter, intersectPoint, dis = JG.ray_intersect(marker_id=12, thickness=0.01)
             # Draw In 3D
             draw.camera()
             draw.corner(frame_info)

@@ -104,6 +104,10 @@ class Draw3D():
         ax.set_ylabel('Y')
         ax.set_zlabel('Z')
 
+    def target_corner(self, frame_info, marker_id):
+        ax = self.fig.gca(projection='3d')
+        ids, rvecs, tvecs, markerLength = frame_info['ids'], frame_info['rvecs'], frame_info['tvecs'], frame_info['markerLength']
+
     def corner(self, frame_info, draw_planes=True):
         ax = self.fig.gca(projection='3d')
         ids, rvecs, tvecs, markerLength = frame_info['ids'], frame_info['rvecs'], frame_info['tvecs'], frame_info['markerLength']

@@ -5,6 +5,13 @@ import numpy as np
 import PyCapture2
 
 
+def get_resolution(camera):
+    if camera == 'webcam':
+        return (640, 480)
+    elif camera == 'realtime':
+        return (1920, 1200)
+
+
 def loda_camera_params(camera='webcam'):
 
     if camera == 'webcam':

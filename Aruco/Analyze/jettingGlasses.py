@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import math
 import copy
 
+from board import *
 from drawing import *
 from parameters import *
 
@@ -14,10 +15,15 @@ from parameters import *
 class Jetting_Glasses:
 
     def __init__(self, cameraMatrix, distCoeffs, need_acc=False):
-        self.aruco_dict = aruco.Dictionary_get(aruco.DICT_4X4_50)
-        self.tracker_dict = aruco.Dictionary_get(aruco.DICT_5X5_50)
+        self.arucoTrackerBoard = ArucoBoard(nMarkers=10, markerSize=3, markerLength=0.012, markerSeparation=0.0012, randomSeed=10, size=(1, 10))
+        self.arucoMarkerBoard = ArucoBoard(nMarkers=20, markerSize=3, markerLength=0.012, markerSeparation=0.003, randomSeed=1, size=(2, 10))
+        self.aruco_dict = self.arucoMarkerBoard.getDict()
+        self.tracker_dict = self.arucoTrackerBoard.getDict()
         self.parameters = aruco.DetectorParameters_create()
         if need_acc:
+            self.parameters.errorCorrectionRate = 0.4
+            self.parameters.minCornerDistanceRate = 0.01
+            self.parameters.minMarkerDistanceRate = 0.01
             self.parameters.cornerRefinementMethod = aruco.CORNER_REFINE_APRILTAG
             self.parameters.cornerRefinementMaxIterations = 100
             self.parameters.cornerRefinementMinAccuracy = 0.01
@@ -32,12 +38,15 @@ class Jetting_Glasses:
 
     def update_frame(self, frame):
         self.frame = frame
+        self.error = ''
         self.corners, self.ids, self.rejectedImgPoints = aruco.detectMarkers(self.frame, self.aruco_dict, parameters=self.parameters)
         self.rvecs, self.tvecs, self._corners = aruco.estimatePoseSingleMarkers(self.corners, self.markerLength, self.cameraMatrix, self.distCoeffs)
 
         self.corners_tracker, self.ids_tracker, _ = aruco.detectMarkers(self.frame, self.tracker_dict, parameters=self.parameters)
         self.rvecs_tracker, self.tvecs_tracker, _ = aruco.estimatePoseSingleMarkers(self.corners_tracker, markerLength_tracker, self.cameraMatrix, self.distCoeffs)
-        board = aruco.GridBoard_create(1, 10, markerLength_tracker, markerSeparation_tracker, self.tracker_dict)
+        size = self.arucoTrackerBoard.getBoardSize()
+        board = aruco.GridBoard_create(size[0], size[1], markerLength_tracker, markerSeparation_tracker, self.tracker_dict)
+
         _, self.rvec_tracker, self.tvec_tracker = aruco.estimatePoseBoard(self.corners_tracker, self.ids_tracker, board, self.cameraMatrix, self.distCoeffs)
 
     def get_frame(self, frame, corner=False, axis=False, port=False, ray=False, tracker_corner=False):
@@ -71,7 +80,7 @@ class Jetting_Glasses:
         frame_ = copy.copy(frame)
         if(self.ids_tracker is None):
             return frame_
-        frame_ = aruco.drawDetectedMarkers(frame_, self.corners_tracker, self.ids_tracker, (0, 0, 255))
+        # frame_ = aruco.drawDetectedMarkers(frame_, self.corners_tracker, self.ids_tracker, (0, 0, 255))
         frame_with_axis = cv2.aruco.drawAxis(frame_, self.cameraMatrix, self.distCoeffs, self.rvec_tracker, self.tvec_tracker, markerLength_tracker * 1)
         return frame_with_axis
 
@@ -107,16 +116,20 @@ class Jetting_Glasses:
             frame_with_ray = cv2.line(frame_, tuple(imagePoints[0][0]), tuple(imagePoints[1][0]), (255, 0, 0), 3)
         return frame_with_ray
 
-    def get_plane(self, marker_id=-1):
+    def get_plane(self, marker_id=-1, thickness=0):
         if(self.ids is None):
+            self.error += 'No Marker '
             return self.NULL_POINT, None
+
         if marker_id not in self.ids:
+            self.error += 'No Marker '
             return self.NULL_POINT, None
+
         idx = list(self.ids).index(marker_id)
         r_mat, _ = cv2.Rodrigues(self.rvecs[idx])
         t_vec = self.tvecs[idx]
         t_mat = np.array([t_vec[0], ] * 2).transpose()
-        p_origin, p_norm = [0, 0, 0], [0, 0, 1]
+        p_origin, p_norm = [0, 0, -1 * thickness], [0, 0, -1 * thickness + 1]
         line = np.transpose(np.array([p_origin, p_norm]))
         line_ = np.matmul(r_mat, line) + t_mat
         line_ = np.transpose(line_)
@@ -127,6 +140,7 @@ class Jetting_Glasses:
     def get_ray(self):
         if self.ids_tracker is None:
             print('Error: Can not locate injection port !')
+            self.error += 'No Port '
             return NULL_POINT, NULL_POINT
         r_mat, _ = cv2.Rodrigues(self.rvec_tracker)
         t_vec = self.tvec_tracker
@@ -151,8 +165,8 @@ class Jetting_Glasses:
     def distance(self, p0, p1):
         return math.sqrt((p0[0] - p1[0])**2 + (p0[1] - p1[1])**2 + (p0[2] - p1[2])**2)
 
-    def ray_intersect(self, marker_id):
-        planeCenter, planeNormal = self.get_plane(marker_id)
+    def ray_intersect(self, marker_id, thickness=0):
+        planeCenter, planeNormal = self.get_plane(marker_id, thickness)
         rayPoint, rayDirection = self.get_ray()
         if(np.any(np.isnan(planeCenter)) or np.any(np.isnan(rayPoint))):
             return self.NULL_POINT, self.NULL_POINT, self.NULL_POINT, np.nan,
@@ -167,4 +181,5 @@ class Jetting_Glasses:
                 'tvec_tracker': self.tvec_tracker, 'rvec_tracker': self.rvec_tracker,
                 'rvecs_tracker': self.rvecs_tracker, 'tvecs_tracker': self.tvecs_tracker,
                 'corners_tracker': self.corners_tracker,
-                'cameraMatrix': self.cameraMatrix, 'distCoeffs': self.distCoeffs}
+                'cameraMatrix': self.cameraMatrix, 'distCoeffs': self.distCoeffs,
+                'error': self.error}

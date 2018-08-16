@@ -5,6 +5,8 @@ import numpy as np
 import copy
 import PyCapture2
 
+import copy
+
 camera = 'webcam'
 
 
@@ -32,7 +34,6 @@ def capIm(cam):
 
 
 def calib(img_list):
-
     n_rows = 5
     n_cols = 4
     n_cols_and_rows = (n_cols, n_rows)  # originally (7,6) # 4,5 same results
@@ -48,7 +49,10 @@ def calib(img_list):
     objpoints = []  # 3d point in real world space
     imgpoints = []  # 2d points in image plane.
 
-    for i, img in enumerate(img_list):
+    for i, img_ in enumerate(img_list):
+
+        img = copy.copy(img_)
+
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
         # Find the chess board corners
@@ -63,7 +67,7 @@ def calib(img_list):
             # Draw and display the corners
             img = cv2.drawChessboardCorners(img, n_rows_and_cols, corners, ret)
             cv2.imshow('img', cv2.resize(img, (640, 480)))
-            cv2.waitKey(500)
+            cv2.waitKey(500 // (len(img_list) / 10))
 
     cv2.destroyAllWindows()
     print('Calibrating...')
@@ -78,7 +82,6 @@ def calib(img_list):
         tot_error += error
 
     print("mean error: ", tot_error / len(objpoints))
-
     return mtx, dist
 
 
