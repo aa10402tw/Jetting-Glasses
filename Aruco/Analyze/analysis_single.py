@@ -6,15 +6,14 @@ import glob
 import os
 
 
-participant_name = 'test'
+participant_name = 'KuanWen'
 
 camera = 'webcam'
 
 
-pos2marker = {'index_1': 5, 'index_2': 13, 'index_3': 1,
-              'middle_1': 0, 'middle_2': 3, 'middle_3': 12,
-              'ring_1': 6, 'ring_2': 7, 'ring_3': 8,
-              'little_1': 0, 'little_2': 0, 'little_3': 0}
+pos2marker = {'index_1': 1, 'index_2': 3, 'index_3': 5,
+              'middle_1': 12, 'middle_2': 13, 'middle_3': 14,
+              'ring_1': 16, 'ring_2': 17, 'ring_3': 19}
 
 marker2pos = {v: k for k, v in pos2marker.items()}
 
@@ -24,10 +23,11 @@ JG = Jetting_Glasses(cameraMatrix, distCoeffs, need_acc=True)
 draw = Draw3D()
 
 
-def read_panticpant_data(name='', haptic=False):
+def read_panticpant_data(name='', haptic=True):
     if name:
         subTitle = 'haptic' if haptic else 'no_haptic'
         file_name = 'data/csv/%s(%s).csv' % (name, subTitle)
+        print(file_name)
         df = pd.read_csv(file_name, sep='\t')
         return df
 

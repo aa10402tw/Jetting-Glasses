@@ -10,8 +10,8 @@ tracker_id_right = 40
 offset_left = -5 * 1.25
 offset_right = 5 * 1.25
 
-tracker_offset_x = markerLength_tracker * 0.5
-tracker_offset_y = (markerLength_tracker + markerSeparation_tracker) * 9 + markerLength_tracker * 0.5
+tracker_offset_y = 1.1 / 100
+tracker_offset_x = 7.4 / 100
 
 NULL_POINT = [np.nan, np.nan, np.nan]
 

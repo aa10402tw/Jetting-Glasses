@@ -46,7 +46,7 @@ class ArucoBoard:
 ##################
 if __name__ == '__main__':
     # arucoTrackerBoard = ArucoBoard(nMarkers=8, markerSize=3, markerLength=0.012, markerSeparation=0.003, randomSeed=10)
-    arucoTrackerBoard = ArucoBoard(nMarkers=10, markerSize=3, markerLength=0.012, markerSeparation=0.0012, randomSeed=10, size=(1, 10))
+    arucoTrackerBoard = ArucoBoard(nMarkers=9, markerSize=3, markerLength=0.012, markerSeparation=0.0012, randomSeed=10, size=(3, 3))
     arucoMarkerBoard = ArucoBoard(nMarkers=20, markerSize=3, markerLength=0.012, markerSeparation=0.003, randomSeed=1, size=(2, 10))
     arucoTrackerBoard.saveBoardImage(img_name='TrackerBoard.jpg')
     arucoMarkerBoard.saveBoardImage(img_name='MarkerBoard.jpg')

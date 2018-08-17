@@ -15,7 +15,7 @@ from testCamera import *
 USER_NAME = ''
 MODE = 1
 
-save_data = True
+save_data = False
 
 LABELS = [
     'index_1', 'index_2', 'index_3',

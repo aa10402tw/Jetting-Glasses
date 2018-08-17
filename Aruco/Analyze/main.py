@@ -63,15 +63,16 @@ if mode == 'video':
         if c & 0xFF == ord('w'):  # 按 w to view 3D
             cv2.waitKey(3000)
             frame_info = JG.get_frame_info()
-            rayPoint, planeCenter, intersectPoint, dis = JG.ray_intersect(marker_id=12, thickness=0.01)
+            rayPoint, planeCenter, intersectPoint, dis = JG.ray_intersect(marker_id=3, thickness=0.015)
             # Draw In 3D
-            draw.camera()
-            draw.corner(frame_info)
-            draw.tracker_corner(frame_info)
-            draw.port_ray(frame_info)
-            draw.intersect(planeCenter, intersectPoint)
-            draw.show()
-            draw.__init__()
+            # draw.camera()
+            # draw.corner(frame_info)
+            # draw.tracker_corner(frame_info)
+            # draw.port_ray(frame_info)
+            # draw.intersect(planeCenter, intersectPoint)
+            # draw.adjust_lim(intersectPoint, rayPoint)
+            # draw.show()
+            # draw.__init__()
 
     # when everything done , release the capture
     myCam.release()

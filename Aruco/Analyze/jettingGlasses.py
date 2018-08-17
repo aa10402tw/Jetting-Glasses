@@ -16,6 +16,7 @@ class Jetting_Glasses:
 
     def __init__(self, cameraMatrix, distCoeffs, need_acc=False):
         self.arucoTrackerBoard = ArucoBoard(nMarkers=10, markerSize=3, markerLength=0.012, markerSeparation=0.0012, randomSeed=10, size=(1, 10))
+        self.arucoTrackerBoard = ArucoBoard(nMarkers=9, markerSize=3, markerLength=0.012, markerSeparation=0.0012, randomSeed=10, size=(3, 3))
         self.arucoMarkerBoard = ArucoBoard(nMarkers=20, markerSize=3, markerLength=0.012, markerSeparation=0.003, randomSeed=1, size=(2, 10))
         self.aruco_dict = self.arucoMarkerBoard.getDict()
         self.tracker_dict = self.arucoTrackerBoard.getDict()

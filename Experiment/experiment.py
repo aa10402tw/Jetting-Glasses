@@ -46,7 +46,7 @@ myCam = MyCam('webcam')
 
 NUM_BLOCK = 1
 NUM_TRIAL = 9
-Debug_Mode = True
+Debug_Mode = False
 FRAME_WIDTH = 800
 FRAME_HEIGHT = 500
 

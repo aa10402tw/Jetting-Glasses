@@ -14,7 +14,7 @@
 
 0. 準備工作：架好實驗所需設備
    依照 Jetting-Glasses/Experiment/HandMarker.jpg 的圖片貼上對應的 Marker
-   ( 可執行 Jetting-Glasses/Experiment/lookID.py 來看各個 Marker 的 ID )
+   ( 可執行 Jetting-Glasses/Experiment/lookID.py 來看各個 Marker 的 ID ， 按下Ctrl+Space切換成英文輸入，再按下'q'可離開)
 
 1. 執行 Jetting-Glasses/Experiment/experiment.py
 
