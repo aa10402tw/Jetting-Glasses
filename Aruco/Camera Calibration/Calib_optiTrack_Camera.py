@@ -49,7 +49,7 @@ JG = Jetting_Glasses(cameraMatrix, distCoeffs, need_acc=True)
 draw = Draw3D()
 cap = cv2.VideoCapture(0)
 
-target_id = 12
+target_id = 5
 
 while True:
     ret, frame = cap.read()
