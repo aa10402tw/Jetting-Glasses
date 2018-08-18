@@ -20,7 +20,7 @@
 #################################################################
 ###   Transformaion between OptiTrack and High Speed Camera   ###
 #################################################################
-1.  印出 Jetting-Glasses\Aruco\Camera Calibration\Image_to_print\Marker.docx 貼在 Rigibody 中心
+1.  印出 Jetting-Glasses\Aruco\Camera Calibration\Image_to_print\Marker.docx 貼在 Rigibody 中心(可自行調整圖片大小再印出來)
 2.	執行 Jetting-Glasses\Aruco\Camera Calibration\Align_optiTrack_Camera
 	拍攝過程只有在 Marker 被偵測到的時候會分別記錄此時在 optiTrack 及 Camera 的座標
 	且為自動記錄，當完成後切換輸入法為英文按下 q 離開
